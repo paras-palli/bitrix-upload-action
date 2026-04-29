@@ -1,0 +1,35 @@
+name: "Bitrix Upload File"
+description: "Delete all files in a Bitrix folder and upload a new one"
+
+inputs:
+  message_grp_id:
+    description: "Bitrix Message Group ID"
+    required: true
+
+  folder_id:
+    description: "Bitrix Folder ID"
+    required: true
+
+  file_name:
+    description: "File name to upload"
+    required: true
+
+  file_path:
+    description: "Path to file"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Python dependencies
+      run: pip install requests
+      shell: bash
+
+    - name: Run upload script
+      run: python ${{ github.action_path }}/upload.py
+      shell: bash
+      env:
+        MESSAGE_GRP_ID: ${{ inputs.message_grp_id }}
+        INPUT_FOLDER_ID: ${{ inputs.folder_id }}
+        INPUT_FILE_NAME: ${{ inputs.file_name }}
+        INPUT_FILE_PATH: ${{ inputs.file_path }}
