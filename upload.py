@@ -1,5 +1,4 @@
 import requests
-import base64
 import sys
 import os
 
@@ -31,36 +30,51 @@ def bitrix_call(method, payload):
     return result
 
 
-# Get files
+# --- Get-files
 files = bitrix_call("disk.folder.getchildren", {"id": FOLDER_ID})
 
-# Delete all
-if "result" in files and len(files["result"]) > 0:
-    for file in files["result"]:
-        file_id = file["ID"]
-        print(f"Deleting file ID: {file_id}")
-        bitrix_call("disk.file.delete", {"id": file_id})
-else:
-    print("No files found.")
+# --- Delete all
+try:
+    if "result" in files and len(files["result"]) > 0:
+        for file in files["result"]:
+            file_id = file["ID"]
+            print(f"Deleting file ID: {file_id}")
+            bitrix_call("disk.file.delete", {"id": file_id})
+    else:
+        print("No files found.")
+except Exception as e:
+    print(f"An error occurred during deletion: {e}")
+    sys.exit(1)
 
-# Upload new file
-with open(FILE_PATH, "rb") as f:
-    base64_content = base64.b64encode(f.read()).decode("utf-8")
 
-upload_payload = {
-    "id": FOLDER_ID,
-    "data": {"NAME": FILE_NAME},
-    "fileContent": [FILE_NAME, base64_content]
-}
+# --- Upload new file (Multipart Method) 
+try:
+    # Step 1: Request the upload URL
+    upload_config = bitrix_call("disk.folder.uploadfile", {"id": FOLDER_ID})
+    upload_url = upload_config["result"]["uploadUrl"]
 
-bitrix_call("disk.folder.uploadfile", upload_payload)
+    # Step 2: Upload the binary file using multipart/form-data
+    with open(FILE_PATH, "rb") as file_data:
+        files = {'file': (FILE_NAME, file_data)}
+        response = requests.post(upload_url, files=files)
 
-# Bitrix Message
+    if response.status_code != 200:
+        print(f"Upload failed with status: {response.status_code}")
+        print(response.text)
+        sys.exit(1)
+
+except Exception as e:
+    print(f"An error occurred during upload: {e}")
+    sys.exit(1)
+
+
+# --- Bitrix Message
 repo_name = os.getenv("GITHUB_REPOSITORY")
+project_name = repo_name.split("/")[-1]
 
 message_payload = {
     "DIALOG_ID": f"chat{MESSAGE_GRP_ID}",
-    "MESSAGE": f"[b]New Build Alert![/b]\n[b]{repo_name}[/b]\nThe latest {FILE_NAME} have been uploaded to the Drive."
+    "MESSAGE": f"[b]New Build Alert![/b]\n[b]{project_name}[/b]\nThe latest {FILE_NAME} have been uploaded to the Drive.",
 }
 
 bitrix_call("im.message.add", message_payload)
