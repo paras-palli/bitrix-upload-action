@@ -69,13 +69,24 @@ except Exception as e:
 
 
 # --- Bitrix Message
-repo_name = os.getenv("GITHUB_REPOSITORY")
-project_name = repo_name.split("/")[-1]
+# repo_name = os.getenv("GITHUB_REPOSITORY")
+# project_name = repo_name.split("/")[-1]
+
+project_name = (
+    os.getenv("CI_PROJECT_NAME")
+    or os.getenv("GITHUB_REPOSITORY", "").split("/")[-1]
+    or "Unknown Project"
+)
 
 message_payload = {
     "DIALOG_ID": f"chat{MESSAGE_GRP_ID}",
-    "MESSAGE": f"[b]New Build Alert![/b]\n[b]{project_name}[/b]\nThe latest {FILE_NAME} have been uploaded to the Drive.",
+    "MESSAGE": (
+        f"[b]New Build Alert![/b]\n"
+        f"[b]{project_name}[/b]\n"
+        f"The latest {FILE_NAME} have been uploaded to the Drive."
+    ),
 }
+
 
 bitrix_call("im.message.add", message_payload)
 
